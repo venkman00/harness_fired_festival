@@ -98,6 +98,8 @@ class ClaudeAgent:
             if isinstance(data, str):
                 data = json.loads(data)
             raw_signals = data.get("signals", []) if isinstance(data, dict) else []
+            if isinstance(raw_signals, str):  # model returned the array as a JSON string
+                raw_signals = json.loads(raw_signals)
             for raw in raw_signals:
                 if isinstance(raw, str):
                     raw = json.loads(raw)

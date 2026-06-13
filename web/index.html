@@ -84,6 +84,10 @@
   mark { background:var(--accent); color:#111; padding:1px 2px; border-radius:3px; }
   .x { float:right; cursor:pointer; color:var(--dim); font-size:20px; }
   .muted { color:var(--dim); font-size:13px; }
+  .span,.ev { display:flex; justify-content:space-between; gap:10px; font-size:12px;
+    font-family:ui-monospace,SFMono-Regular,Menlo,monospace; padding:3px 0;
+    border-bottom:1px solid var(--panel2); }
+  .span .dim,.ev .dim { color:var(--dim); white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -150,8 +154,13 @@ async function runHarness() {
         ticker: document.getElementById('ticker').value,
         worker, earnings: document.getElementById('earnings').value })
     });
-    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
-    render(await r.json());
+    const body = await r.text();
+    if (!r.ok) {
+      let msg = body;
+      try { msg = JSON.parse(body).detail || body; } catch (_) {}
+      throw new Error(msg);
+    }
+    render(JSON.parse(body));
     setStatus('');
   } catch (e) { setStatus('Error: ' + e.message); }
   btn.disabled = false;
@@ -192,12 +201,34 @@ function renderHarness(res) {
     <div class="a">${esc(a.recommended_action)}</div></div>`);
   h += `</div>`;
 
-  h += `<div class="panel"><h3>Observability (OTEL)</h3><div class="totals">
+  const tel = res.report.telemetry || {};
+  h += `<div class="panel"><h3>Observability (OTEL) ${tel.otel_emitting?'· emitting':'· in-process'}</h3><div class="totals">
     <div><b>${t.llm_calls||0}</b><span>worker calls</span></div>
     <div><b>${(t.tokens_in||0)+(t.tokens_out||0)}</b><span>tokens</span></div>
     <div><b>$${(t.cost_usd||0).toFixed(4)}</b><span>cost</span></div>
     <div><b>${(t.latency_s||0).toFixed(1)}s</b><span>latency</span></div>
   </div></div>`;
+
+  const spans = tel.spans || [];
+  h += `<div class="panel"><h3>Trace · ${spans.length} spans</h3>`;
+  spans.forEach(sp => {
+    const a = sp.attributes || {};
+    const llm = a['llm.model'] ?
+      ` · ${a['llm.model']} · ${(a['llm.tokens_in']||0)+(a['llm.tokens_out']||0)}tok · $${(a['llm.cost_usd']||0).toFixed(4)}` : '';
+    h += `<div class="span"><span>${esc(sp.name)}${llm}</span><span class="dim">${(sp.duration_s||0).toFixed(2)}s</span></div>`;
+  });
+  h += `</div>`;
+
+  const audit = res.report.audit || [];
+  h += `<div class="panel"><h3>Audit log · ${audit.length} events</h3>`;
+  audit.forEach(e => {
+    const bits = [e.event, e.stage, e.name].filter(Boolean).join(' · ');
+    const mark = ('passed' in e) ? (e.passed ? ' ✓' : ' ✗') : '';
+    const extra = (e.attempt != null ? ` attempt ${e.attempt}` : '') +
+                  (e.n_signals != null ? ` · ${e.n_signals} signals` : '');
+    h += `<div class="ev">${esc(bits)}<span class="dim">${mark}${esc(extra)}</span></div>`;
+  });
+  h += `</div>`;
 
   document.getElementById('harness').innerHTML = h;
 }

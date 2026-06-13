@@ -12,6 +12,9 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0.0"]
+# Real OpenTelemetry export (console by default; OTLP when OTEL_EXPORTER_OTLP_ENDPOINT set).
+# The harness degrades to in-process span recording if these are absent.
+otel = ["opentelemetry-sdk>=1.20.0", "opentelemetry-exporter-otlp-proto-http>=1.20.0"]
 
 [tool.pytest.ini_options]
 pythonpath = ["."]

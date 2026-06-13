@@ -29,6 +29,20 @@ ROOT = os.path.dirname(os.path.abspath(__file__))
 DATA = os.path.join(ROOT, "data")
 WEB = os.path.join(ROOT, "web")
 
+
+def _load_dotenv() -> None:
+    """Load .env (e.g. ANTHROPIC_API_KEY) so the server works however it's launched."""
+    path = os.path.join(ROOT, ".env")
+    if not os.path.exists(path):
+        return
+    for line in open(path):
+        line = line.strip()
+        if line and not line.startswith("#") and "=" in line:
+            k, v = line.split("=", 1)
+            os.environ.setdefault(k.strip(), v.strip().strip('"').strip("'"))
+
+
+_load_dotenv()
 app = FastAPI(title="SignalGuard")
 
 
@@ -114,7 +128,10 @@ def api_run(req: RunRequest):
 
     material = build_material(req.ticker, sources)
     store = ArtifactStore()
-    run_harness(material, make_agent(req.worker), HarnessConfig(), store=store)
+    try:
+        run_harness(material, make_agent(req.worker), HarnessConfig(), store=store)
+    except Exception as e:  # surface worker/model failures as clean JSON, not a 500 page
+        raise HTTPException(502, f"{type(e).__name__}: {e}")
     return JSONResponse(_assemble(store, material.run_id))
 
 
