@@ -10,12 +10,8 @@ import re
 from typing import Any
 
 from .base import CheckpointResult
+from ..material.textnorm import ground_key
 from ..material.types import SourceType
-
-
-def _norm(s: str) -> str:
-    """Whitespace- and case-insensitive normalization for substring grounding checks."""
-    return re.sub(r"\s+", " ", s).strip().lower()
 
 
 class CP1_Ingest:
@@ -75,7 +71,8 @@ class CP2_Grounding:
         ungrounded, bad_conf = [], []
         for s in material.signals:
             doc = material.doc(s.source_id)
-            if doc is None or _norm(s.quote) not in _norm(doc.text):
+            quote_key = ground_key(s.quote)
+            if doc is None or not quote_key or quote_key not in ground_key(doc.text):
                 ungrounded.append(s.id)
             if not (0.0 <= s.confidence <= 1.0):
                 bad_conf.append(s.id)

@@ -1,0 +1,254 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>SignalGuard</title>
+<style>
+  :root {
+    --bg:#0a0a0a; --panel:#141414; --panel2:#1b1b1b; --line:#2a2a2a;
+    --txt:#e8e8e8; --dim:#9a9a9a; --accent:#E8632A;
+    --green:#3fb950; --amber:#d29922; --red:#f85149; --blue:#58a6ff;
+  }
+  * { box-sizing:border-box; }
+  body { margin:0; background:var(--bg); color:var(--txt);
+    font:15px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+  a { color:var(--accent); }
+  header { padding:22px 28px; border-bottom:1px solid var(--line); }
+  header h1 { margin:0; font-size:26px; letter-spacing:-.02em; }
+  header h1 span { color:var(--accent); }
+  header p { margin:4px 0 0; color:var(--dim); font-size:13px; }
+  .wrap { display:grid; grid-template-columns:340px 1fr; gap:0; min-height:calc(100vh - 92px); }
+  .side { border-right:1px solid var(--line); padding:20px; }
+  .main { padding:20px 28px; }
+  label { display:block; font-size:11px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--dim); margin:14px 0 6px; }
+  select, input, button { width:100%; padding:9px 10px; background:var(--panel2);
+    color:var(--txt); border:1px solid var(--line); border-radius:8px; font-size:14px; }
+  button.run { margin-top:18px; background:var(--accent); color:#111; border:none;
+    font-weight:700; cursor:pointer; padding:11px; }
+  button.run:disabled { opacity:.5; cursor:default; }
+  .panel { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:14px; }
+  .panel h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.08em;
+    color:var(--dim); }
+  .cp { margin-bottom:10px; }
+  .cp .row { display:flex; align-items:center; gap:8px; font-weight:600; }
+  .crit { font-size:12.5px; color:var(--dim); margin:2px 0 0 22px; }
+  .crit.ok::before { content:"✓ "; color:var(--green); }
+  .crit.no::before { content:"✗ "; color:var(--red); }
+  .pill { font-size:11px; font-weight:700; padding:2px 8px; border-radius:20px; }
+  .pass { background:rgba(63,185,80,.15); color:var(--green); }
+  .fail { background:rgba(248,81,73,.15); color:var(--red); }
+  .gr { display:flex; justify-content:space-between; font-size:13px; padding:3px 0; }
+  .gr .ok { color:var(--green); } .gr .no { color:var(--red); }
+  .alarm { border-left:3px solid var(--line); padding:7px 10px; margin:8px 0;
+    background:var(--panel2); border-radius:0 8px 8px 0; }
+  .alarm .t { font-weight:700; font-size:13px; }
+  .alarm .a { font-size:12.5px; color:var(--dim); margin-top:2px; }
+  .sev-LOW{border-color:var(--dim)} .sev-MEDIUM{border-color:var(--amber)}
+  .sev-HIGH{border-color:var(--accent)} .sev-CRITICAL{border-color:var(--red)}
+  .badge { display:inline-block; font-size:10px; font-weight:700; padding:2px 7px;
+    border-radius:5px; background:var(--panel2); color:var(--dim); margin-right:6px; }
+  .totals { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+  .totals div { background:var(--panel2); border-radius:8px; padding:8px 10px; }
+  .totals b { display:block; font-size:17px; } .totals span { font-size:11px; color:var(--dim); }
+  .sig { background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    padding:14px 16px; margin-bottom:12px; cursor:pointer; transition:border-color .15s; }
+  .sig:hover { border-color:var(--accent); }
+  .sig .top { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+  .kind { font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.04em;
+    padding:2px 8px; border-radius:5px; }
+  .k-guidance_change{background:rgba(88,166,255,.15);color:var(--blue)}
+  .k-metric_surprise{background:rgba(63,185,80,.15);color:var(--green)}
+  .k-risk_flag{background:rgba(248,81,73,.15);color:var(--red)}
+  .k-sentiment_shift{background:rgba(210,153,34,.15);color:var(--amber)}
+  .dir { font-size:12px; color:var(--dim); }
+  .conf { margin-left:auto; font-size:12px; color:var(--dim); }
+  .bar { height:4px; background:var(--panel2); border-radius:3px; margin-top:8px; overflow:hidden; }
+  .bar i { display:block; height:100%; background:var(--accent); }
+  .claim { font-size:14.5px; }
+  .corr { margin-top:8px; }
+  .corr span { font-size:11px; background:rgba(232,99,42,.13); color:var(--accent);
+    padding:2px 8px; border-radius:20px; margin-right:6px; }
+  .empty { color:var(--dim); padding:40px; text-align:center; }
+  /* modal */
+  .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:none;
+    align-items:center; justify-content:center; padding:30px; z-index:10; }
+  .modal.show { display:flex; }
+  .modal .box { background:var(--panel); border:1px solid var(--line); border-radius:14px;
+    max-width:820px; width:100%; max-height:82vh; overflow:auto; padding:22px 26px; }
+  .modal h2 { margin:0 0 4px; font-size:18px; }
+  .modal .src { white-space:pre-wrap; font-size:13px; color:var(--dim); line-height:1.7;
+    margin-top:14px; }
+  mark { background:var(--accent); color:#111; padding:1px 2px; border-radius:3px; }
+  .x { float:right; cursor:pointer; color:var(--dim); font-size:20px; }
+  .muted { color:var(--dim); font-size:13px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>Signal<span>Guard</span></h1>
+  <p>A trust harness governing an AI agent that extracts grounded investing signals from Berkshire Hathaway filings.</p>
+</header>
+
+<div class="wrap">
+  <aside class="side">
+    <label>Ticker</label>
+    <input id="ticker" value="BRK.A" />
+    <label>Earnings source</label>
+    <select id="earnings"></select>
+    <label>Worker (swap freely — harness unchanged)</label>
+    <select id="worker">
+      <option value="mock">mock — deterministic (instant)</option>
+      <option value="sonnet">claude-sonnet-4-6</option>
+      <option value="opus">claude-opus-4-8</option>
+    </select>
+    <button class="run" id="runBtn" onclick="runHarness()">Run harness</button>
+    <p class="muted" id="status" style="margin-top:12px"></p>
+
+    <div id="harness"></div>
+  </aside>
+
+  <main class="main">
+    <div id="signals"><div class="empty">Run the harness to surface grounded signals.</div></div>
+  </main>
+</div>
+
+<div class="modal" id="modal" onclick="if(event.target.id==='modal')closeModal()">
+  <div class="box">
+    <span class="x" onclick="closeModal()">×</span>
+    <h2 id="mTitle"></h2>
+    <div class="muted" id="mMeta"></div>
+    <div class="src" id="mSrc"></div>
+  </div>
+</div>
+
+<script>
+let SOURCES = {};
+
+async function loadData() {
+  const r = await fetch('/api/data'); const { data } = await r.json();
+  const sel = document.getElementById('earnings');
+  data.filter(d => d.kind === 'earnings').forEach(d => {
+    const o = document.createElement('option'); o.value = d.path;
+    o.textContent = `${d.path} (${d.size_kb} KB)`; sel.appendChild(o);
+  });
+  const def = [...sel.options].find(o => o.value.includes('2023ltr'));
+  if (def) sel.value = def.value;
+}
+
+async function runHarness() {
+  const btn = document.getElementById('runBtn');
+  const worker = document.getElementById('worker').value;
+  btn.disabled = true;
+  setStatus(worker === 'mock' ? 'Running…' : 'Calling model — this can take 1–2 min…');
+  try {
+    const r = await fetch('/api/run', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        ticker: document.getElementById('ticker').value,
+        worker, earnings: document.getElementById('earnings').value })
+    });
+    if (!r.ok) throw new Error((await r.json()).detail || r.statusText);
+    render(await r.json());
+    setStatus('');
+  } catch (e) { setStatus('Error: ' + e.message); }
+  btn.disabled = false;
+}
+
+function setStatus(s){ document.getElementById('status').textContent = s; }
+
+function render(res) {
+  SOURCES = {}; (res.sources || []).forEach(s => SOURCES[s.source_id] = s);
+  renderHarness(res);
+  renderSignals(res.report.signals || []);
+}
+
+function renderHarness(res) {
+  const t = (res.report.telemetry || {}).totals || {};
+  const alarms = (res.report.alarms || {}).alarms || [];
+  const hitl = (res.report.alarms || {}).hitl_queue || [];
+  let h = '';
+
+  h += `<div class="panel"><h3>Checkpoints</h3>`;
+  (res.checkpoints || []).forEach(cp => {
+    h += `<div class="cp"><div class="row">${cp.name}
+      <span class="pill ${cp.passed?'pass':'fail'}">${cp.passed?'PASS':'FAIL'}</span></div>`;
+    cp.criteria.forEach(c => h += `<div class="crit ${c.passed?'ok':'no'}">${esc(c.criterion)}</div>`);
+    h += `</div>`;
+  });
+  h += `</div>`;
+
+  h += `<div class="panel"><h3>Guardrails</h3>`;
+  (res.guardrails || []).forEach(g => h += `<div class="gr"><span>${g.name}</span>
+    <span class="${g.passed?'ok':'no'}">${g.passed?'✓ '+esc(g.detail):'✗ '+esc(g.detail)}</span></div>`);
+  h += `</div>`;
+
+  h += `<div class="panel"><h3>Alarms · ${alarms.length} (${hitl.length} → human)</h3>`;
+  if (!alarms.length) h += `<div class="muted">none raised</div>`;
+  alarms.forEach(a => h += `<div class="alarm sev-${a.severity}">
+    <div class="t">${a.type} <span class="badge">${a.severity}</span></div>
+    <div class="a">${esc(a.recommended_action)}</div></div>`);
+  h += `</div>`;
+
+  h += `<div class="panel"><h3>Observability (OTEL)</h3><div class="totals">
+    <div><b>${t.llm_calls||0}</b><span>worker calls</span></div>
+    <div><b>${(t.tokens_in||0)+(t.tokens_out||0)}</b><span>tokens</span></div>
+    <div><b>$${(t.cost_usd||0).toFixed(4)}</b><span>cost</span></div>
+    <div><b>${(t.latency_s||0).toFixed(1)}s</b><span>latency</span></div>
+  </div></div>`;
+
+  document.getElementById('harness').innerHTML = h;
+}
+
+function renderSignals(signals) {
+  const el = document.getElementById('signals');
+  if (!signals.length) { el.innerHTML = `<div class="empty">No signals survived the harness.</div>`; return; }
+  el.innerHTML = signals.map((s, i) => `
+    <div class="sig" onclick="showEvidence(${i})">
+      <div class="top">
+        <span class="kind k-${s.kind}">${s.kind.replace(/_/g,' ')}</span>
+        <span class="dir">${arrow(s.direction)} ${s.direction}</span>
+        <span class="conf">${(s.confidence*100).toFixed(0)}% confidence</span>
+      </div>
+      <div class="claim">${esc(s.claim)}</div>
+      <div class="bar"><i style="width:${s.confidence*100}%"></i></div>
+      ${s.corroborating_sources && s.corroborating_sources.length ?
+        `<div class="corr">${s.corroborating_sources.map(c=>`<span>＋ ${c}</span>`).join('')}</div>`:''}
+    </div>`).join('');
+  window._SIG = signals;
+}
+
+function showEvidence(i) {
+  const s = window._SIG[i]; const doc = SOURCES[s.source_id] || {};
+  document.getElementById('mTitle').textContent = s.claim;
+  document.getElementById('mMeta').textContent =
+    `Evidence quote · source: ${doc.title || s.source_id} · ${(s.confidence*100).toFixed(0)}% confidence`;
+  const text = doc.text || '(source unavailable)';
+  document.getElementById('mSrc').innerHTML = highlight(text, s.quote);
+  document.getElementById('modal').classList.add('show');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('show'); }
+
+function highlight(text, quote) {
+  // best-effort: locate a leading chunk of the quote in the source, ignoring case
+  const probe = (quote||'').trim().slice(0, 60);
+  if (probe) {
+    const idx = text.toLowerCase().indexOf(probe.toLowerCase());
+    if (idx >= 0) {
+      const end = Math.min(text.length, idx + (quote.length));
+      return esc(text.slice(0, idx)) + '<mark>' + esc(text.slice(idx, end)) +
+             '</mark>' + esc(text.slice(end));
+    }
+  }
+  return `<div class="muted">Quote: “${esc(quote||'')}”</div><br>` + esc(text);
+}
+
+function arrow(d){ return d==='bullish'?'▲':d==='bearish'?'▼':'■'; }
+function esc(s){ return (s||'').replace(/[&<>]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c])); }
+
+loadData();
+</script>
+</body>
+</html>

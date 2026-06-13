@@ -4,16 +4,10 @@ from __future__ import annotations
 
 import json
 import os
-import re
 import uuid
 
+from .textnorm import normalize_text as _norm
 from .types import Material, SourceDoc, SourceType
-
-
-def _norm(text: str) -> str:
-    """Collapse runs of spaces/tabs but preserve line and sentence structure."""
-    text = text.replace("\r\n", "\n")
-    return re.sub(r"[ \t]+", " ", text).strip()
 
 
 def _read_text(path: str) -> str:
