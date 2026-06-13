@@ -94,7 +94,13 @@ class ClaudeAgent:
         for block in resp.content:
             if getattr(block, "type", None) != "tool_use":
                 continue
-            for raw in block.input.get("signals", []):
+            data = block.input
+            if isinstance(data, str):
+                data = json.loads(data)
+            raw_signals = data.get("signals", []) if isinstance(data, dict) else []
+            for raw in raw_signals:
+                if isinstance(raw, str):
+                    raw = json.loads(raw)
                 signals.append(Signal(
                     kind=SignalKind(raw["kind"]),
                     claim=raw["claim"],
