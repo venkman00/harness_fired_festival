@@ -1,0 +1,17 @@
+[project]
+name = "signalguard"
+version = "0.1.0"
+description = "A trust harness that governs an AI agent extracting grounded investing signals from multi-source financial data."
+requires-python = ">=3.11"
+dependencies = [
+    "anthropic>=0.40.0",
+    "fastapi>=0.110.0",
+    "uvicorn>=0.29.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0.0"]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]

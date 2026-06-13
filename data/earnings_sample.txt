@@ -1,0 +1,28 @@
+Berkshire Hathaway Inc. — Sample Quarterly Earnings Release (SYNTHETIC TEST FIXTURE)
+
+NOTE: This is a synthetic, illustrative document used only for local development and CI of
+the SignalGuard harness. Replace with a real Berkshire Hathaway earnings release / 10-Q in
+data/earnings.txt before the demo run.
+
+Omaha, NE — For the third quarter, Berkshire Hathaway reported operating earnings of $11.2
+billion, an increase from $10.1 billion in the prior-year period, as insurance underwriting
+results rose sharply. Insurance underwriting earnings increased to $2.4 billion for the
+quarter, reflecting strong pricing and lower catastrophe losses at GEICO and the reinsurance
+group. We expect underwriting margins to remain robust through the full year given current
+pricing discipline.
+
+Railroad results were softer. BNSF reported a decline in volumes and a decrease in net
+earnings to $1.3 billion, as lower consumer-product shipments and cost pressure weighed on
+the segment. Management noted ongoing headwind from intermodal weakness, though it remains
+confident in the long-term franchise.
+
+Berkshire Hathaway Energy delivered resilient results, with earnings up modestly to $1.1
+billion on robust demand for regulated utility services. The company continues to anticipate
+meaningful capital investment in transmission over the coming years.
+
+Cash and short-term investments stood at a record $157 billion at quarter end. Insurance
+float was approximately $169 billion. The company repurchased $1.1 billion of its common
+stock during the quarter.
+
+These results contain forward-looking statements subject to risk and uncertainty, including
+changes in economic conditions, competitive pressure, and catastrophe exposure.
