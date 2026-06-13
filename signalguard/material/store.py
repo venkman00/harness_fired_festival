@@ -31,8 +31,10 @@ class ArtifactStore:
 
     def save(self, run_id: str, stage: str, obj: Any) -> str:
         path = os.path.join(self._dir(run_id), f"{stage}.json")
-        with open(path, "w") as f:
+        tmp = path + ".tmp"
+        with open(tmp, "w") as f:
             json.dump(obj, f, indent=2, default=_default)
+        os.replace(tmp, path)  # atomic — progress polling never sees a partial file
         return path
 
     def load(self, run_id: str, stage: str) -> Any:

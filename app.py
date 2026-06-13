@@ -94,6 +94,7 @@ class RunRequest(BaseModel):
     earnings: str | None = None
     podcast: str | None = None
     x: str | None = None
+    run_id: str | None = None  # client-supplied so it can poll progress during the run
 
 
 @app.get("/")
@@ -126,13 +127,41 @@ def api_run(req: RunRequest):
     if not sources:
         raise HTTPException(400, "provide at least an earnings source")
 
-    material = build_material(req.ticker, sources)
+    material = build_material(req.ticker, sources, run_id=req.run_id)
     store = ArtifactStore()
     try:
         run_harness(material, make_agent(req.worker), HarnessConfig(), store=store)
     except Exception as e:  # surface worker/model failures as clean JSON, not a 500 page
         raise HTTPException(502, f"{type(e).__name__}: {e}")
     return JSONResponse(_assemble(store, material.run_id))
+
+
+@app.get("/api/progress/{run_id}")
+def progress(run_id: str):
+    """Live view of a run while it executes — reads the per-stage artifacts as the harness
+    persists them, so the UI can show the pipeline lighting up instead of a blank wait."""
+    store = ArtifactStore()
+
+    def cp(stage):
+        try:
+            return store.load(run_id, stage).get("checkpoint") if store.exists(run_id, stage) else None
+        except Exception:
+            return None
+
+    guardrails = []
+    for p in sorted(glob.glob(os.path.join(store.root, run_id, "guardrail_*.json"))):
+        try:
+            guardrails.append(store.load(run_id, os.path.basename(p)[:-5]))
+        except Exception:
+            pass
+    return {
+        "run_id": run_id,
+        "done": store.exists(run_id, "report"),
+        "ingest": cp("ingest"),
+        "grounding": cp("grounding"),
+        "synthesize": cp("synthesize"),
+        "guardrails": guardrails,
+    }
 
 
 @app.get("/api/runs/{run_id}")

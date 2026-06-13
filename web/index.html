@@ -84,6 +84,26 @@
   mark { background:var(--accent); color:#111; padding:1px 2px; border-radius:3px; }
   .x { float:right; cursor:pointer; color:var(--dim); font-size:20px; }
   .muted { color:var(--dim); font-size:13px; }
+  /* live pipeline */
+  .pipe { max-width:620px; margin:10px auto; }
+  .pipe-h { font-size:13px; color:var(--dim); margin-bottom:14px; }
+  .pipe-h b { color:var(--txt); }
+  .stage { display:flex; gap:12px; align-items:flex-start; padding:14px 16px;
+    background:var(--panel); border:1px solid var(--line); border-radius:12px; margin-bottom:10px; }
+  .stage .ic { width:18px; height:18px; border-radius:50%; flex:0 0 18px; margin-top:1px;
+    border:2px solid var(--line); }
+  .snm { font-weight:600; } .snote { font-size:12.5px; color:var(--dim); margin-top:2px; }
+  .st-wait .ic { border-color:var(--line); }
+  .st-wait { opacity:.5; }
+  .st-run .ic { border-color:var(--accent); border-top-color:transparent; animation:spin .8s linear infinite; }
+  .st-redo .ic { border-color:var(--amber); border-top-color:transparent; animation:spin .8s linear infinite; }
+  .st-redo .snm { color:var(--amber); }
+  .st-done .ic { border-color:var(--green); background:var(--green); }
+  .st-fail .ic { border-color:var(--red); background:var(--red); }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .pipe-sub { font-size:12.5px; color:var(--dim); margin:6px 4px; font-family:ui-monospace,Menlo,monospace; }
+  .pipe-foot { font-size:12.5px; color:var(--dim); margin-top:16px; padding:12px 14px;
+    background:var(--panel2); border-radius:10px; line-height:1.5; }
   .span,.ev { display:flex; justify-content:space-between; gap:10px; font-size:12px;
     font-family:ui-monospace,SFMono-Regular,Menlo,monospace; padding:3px 0;
     border-bottom:1px solid var(--panel2); }
@@ -142,28 +162,83 @@ async function loadData() {
   if (def) sel.value = def.value;
 }
 
+let POLL = null, T0 = 0;
+function uuid(){ return (crypto.randomUUID ? crypto.randomUUID() : (Date.now()+''+Math.random()))
+  .replace(/[^a-z0-9]/gi,'').slice(0,12); }
+function elapsed(){ return ((Date.now()-T0)/1000).toFixed(0); }
+
 async function runHarness() {
   const btn = document.getElementById('runBtn');
   const worker = document.getElementById('worker').value;
-  btn.disabled = true;
-  setStatus(worker === 'mock' ? 'Running…' : 'Calling model — this can take 1–2 min…');
+  const runId = uuid();
+  btn.disabled = true; setStatus(''); T0 = Date.now();
+  document.getElementById('harness').innerHTML = '';
+
+  // fire the run (resolves only at the end) but keep the UI responsive
+  const runP = fetch('/api/run', {
+    method:'POST', headers:{'Content-Type':'application/json'},
+    body: JSON.stringify({ run_id: runId, worker,
+      ticker: document.getElementById('ticker').value,
+      earnings: document.getElementById('earnings').value }) });
+
+  pollProgress(runId, worker);   // live pipeline while it runs
+
   try {
-    const r = await fetch('/api/run', {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({
-        ticker: document.getElementById('ticker').value,
-        worker, earnings: document.getElementById('earnings').value })
-    });
+    const r = await runP;
     const body = await r.text();
+    stopPoll();
     if (!r.ok) {
       let msg = body;
       try { msg = JSON.parse(body).detail || body; } catch (_) {}
       throw new Error(msg);
     }
     render(JSON.parse(body));
+    setStatus('done in ' + elapsed() + 's');
+  } catch (e) {
+    stopPoll();
+    document.getElementById('signals').innerHTML = `<div class="empty">Error: ${esc(e.message)}</div>`;
     setStatus('');
-  } catch (e) { setStatus('Error: ' + e.message); }
+  }
   btn.disabled = false;
+}
+
+function pollProgress(runId, worker) {
+  const tick = async () => {
+    let p = {};
+    try { p = await (await fetch('/api/progress/' + runId)).json(); } catch (_) {}
+    renderPipeline(p, worker);
+  };
+  tick(); POLL = setInterval(tick, 1500);
+}
+function stopPoll(){ if (POLL) clearInterval(POLL); POLL = null; }
+
+function renderPipeline(p, worker) {
+  const ig = p.ingest, gr = p.grounding, sy = p.synthesize, done = p.done;
+  const ung = gr && gr.data ? (gr.data.ungrounded_ids||[]).length : 0;
+
+  const ingState = !ig ? 'run' : (ig.passed ? 'done' : 'fail');
+  let loopState, loopNote;
+  if (!ig) { loopState = 'wait'; loopNote = ''; }
+  else if (done || sy) { loopState = 'done'; loopNote = 'all signals grounded'; }
+  else if (!gr) { loopState = 'run'; loopNote = 'agent reading the document…'; }
+  else if (gr.passed) { loopState = 'run'; loopNote = 'grounded ✓ — synthesizing'; }
+  else { loopState = 'redo'; loopNote = `${ung} quote(s) not verbatim — dropping & re-extracting`; }
+  const synState = (sy ? (sy.passed?'done':'fail') : (gr && gr.passed ? 'run' : 'wait'));
+
+  const rows = [
+    ['Ingest', ingState, ig ? ig.detail : 'reading & validating the document'],
+    ['Extract → grounding loop', loopState, loopNote],
+    ['Synthesize', synState, sy ? sy.detail : 'cross-source & coherence checks'],
+  ];
+  let h = `<div class="pipe"><div class="pipe-h">Running · <b>${esc(worker)}</b> · ${elapsed()}s</div>`;
+  rows.forEach(([name, st, note]) => {
+    h += `<div class="stage st-${st}"><span class="ic"></span>
+      <div><div class="snm">${name}</div><div class="snote">${esc(note||'')}</div></div></div>`;
+  });
+  if ((p.guardrails||[]).length)
+    h += `<div class="pipe-sub">Guardrails: ${p.guardrails.map(g=>`${g.name} ${g.passed?'✓':'✗'}`).join(' &nbsp;·&nbsp; ')}</div>`;
+  h += `<div class="pipe-foot">The agent re-extracts until every quote is verbatim-grounded in the source — that's why a model run takes a minute or two. Watch the loop above.</div></div>`;
+  document.getElementById('signals').innerHTML = h;
 }
 
 function setStatus(s){ document.getElementById('status').textContent = s; }
