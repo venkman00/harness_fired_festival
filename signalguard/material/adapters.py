@@ -16,15 +16,23 @@ def _norm(text: str) -> str:
     return re.sub(r"[ \t]+", " ", text).strip()
 
 
-def load_earnings(path: str, source_id: str = "earnings") -> SourceDoc:
+def _read_text(path: str) -> str:
+    """Read .txt directly, or extract text from a .pdf (e.g. a Berkshire letter)."""
+    if path.lower().endswith(".pdf"):
+        from pypdf import PdfReader  # lazy: only needed for PDF inputs
+        reader = PdfReader(path)
+        return "\n".join((page.extract_text() or "") for page in reader.pages)
     with open(path) as f:
-        text = _norm(f.read())
+        return f.read()
+
+
+def load_earnings(path: str, source_id: str = "earnings") -> SourceDoc:
+    text = _norm(_read_text(path))
     return SourceDoc(source_id, SourceType.EARNINGS, os.path.basename(path), text)
 
 
 def load_podcast(path: str, source_id: str = "podcast") -> SourceDoc:
-    with open(path) as f:
-        text = _norm(f.read())
+    text = _norm(_read_text(path))
     return SourceDoc(source_id, SourceType.PODCAST, os.path.basename(path), text)
 
 
