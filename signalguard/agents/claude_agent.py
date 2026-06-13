@@ -2,10 +2,10 @@
 into the harness with zero changes. Uses tool-use for reliable structured output and
 reports token usage + cost back through the AgentContext.
 
-NOTE: pricing below is per-million-tokens and should be verified against the `claude-api`
-skill before the real-data demo run. Model ids are the current Claude family:
-  - claude-opus-4-8   (default)
-  - claude-sonnet-4-6 (swap-in for the portability demo)
+Pricing below is per-million-tokens, verified against the claude-api skill (2026-06-12).
+Model ids are the current Claude family:
+  - claude-opus-4-8   (default)   $5 / $25 per 1M in/out
+  - claude-sonnet-4-6 (swap-in)   $3 / $15 per 1M in/out
 """
 from __future__ import annotations
 
@@ -15,9 +15,9 @@ import os
 from ..material.types import Direction, Signal, SignalKind, SourceDoc
 from .base import AgentContext
 
-# $ per million tokens (input, output). VERIFY via claude-api skill before demo.
+# $ per million tokens (input, output). Verified via claude-api skill 2026-06-12.
 _PRICING = {
-    "claude-opus-4-8": (15.0, 75.0),
+    "claude-opus-4-8": (5.0, 25.0),
     "claude-sonnet-4-6": (3.0, 15.0),
 }
 
